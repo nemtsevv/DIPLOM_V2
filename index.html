@@ -136,23 +136,41 @@
 
   let routeVisible = false;
   document.getElementById('toggleRoute').addEventListener('click', () => {
-    if (routeVisible) {
-      map.removeControl(routeControl);
-      routeVisible = false;
-      document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-route"></i> Маршрут';
-    } else {
-      if (userMarker) {
-        routeControl = L.Routing.control({
-          waypoints: [userMarker.getLatLng(), marker.getLatLng()],
-          routeWhileDragging: true,
-          lineOptions: { styles: [{ color: 'red', weight: 5 }] },
-          createMarker: () => null 
-        }).addTo(map);
-        routeVisible = true;
-        document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-times"></i> Закрыть';
-      }
+  if (routeVisible) {
+    map.removeControl(routeControl);
+    routeVisible = false;
+    document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-route"></i> Маршрут';
+  } else {
+    if (userMarker) {
+      routeControl = L.Routing.control({
+        waypoints: [userMarker.getLatLng(), marker.getLatLng()],
+        routeWhileDragging: true,
+        lineOptions: { styles: [{ color: 'red', weight: 5 }] },
+        createMarker: () => null,
+      }).addTo(map);
+
+      routeVisible = true;
+      document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-times"></i> Закрыть';
+
+      // 🔹 Корректный расчёт расстояния маршрута
+      routeControl.on('routesfound', function (e) {
+        let route = e.routes[0];
+        let totalDistance = (route.summary.totalDistance / 1000).toFixed(2);
+        document.getElementById('infoPanel').innerHTML = `📍 Расстояние до цели: ${totalDistance} км`;
+
+        // 🔹 Стилизация инструкций маршрута
+        // route.instructions.forEach((step) => {
+        //   step.text = step.text.replace('Turn right', '🔄 Поверни направо');
+        //   step.text = step.text.replace('Turn left', '🔄 Поверни налево');
+        //   step.text = step.text.replace('Go straight', '➡️ Двигайся прямо');
+        //   step.text = step.text.replace('Head northeast', 'Направляйтесь на северо-восток');
+        //   step.text = step.text.replace('Stop', '🛑 Остановка');
+        // });
+      });
     }
-  });
+  }
+});
+
 
 </script>
 

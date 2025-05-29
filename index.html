@@ -13,18 +13,15 @@
     margin: 0;
     padding: 0;
     background-color: #f8f9fa;
-    transition: background-color 0.3s ease;
   }
-  
+
   #map {
     height: 100vh;
     width: 100%;
     border-radius: 15px;
     box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2);
-    overflow: hidden;
   }
 
-  /* Кнопки */
   .button {
     position: absolute;
     bottom: 20px;
@@ -37,15 +34,12 @@
     font-weight: bold;
     border: none;
     border-radius: 12px;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
     cursor: pointer;
-    transition: all 0.3s ease;
   }
 
-  .button:hover { transform: scale(1.05); box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.4); }
+  .button:hover { transform: scale(1.05); }
   .button:active { transform: scale(0.95); }
 
-  /* Панель информации */
   #infoPanel {
     position: absolute;
     bottom: 80px;
@@ -56,7 +50,6 @@
     border-radius: 12px;
     font-size: 16px;
     font-weight: bold;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
   }
 </style>
 </head>
@@ -68,18 +61,18 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-  import { getDatabase, ref, query, limitToLast, onValue, orderByKey } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
   import L from "https://cdn.skypack.dev/leaflet";
   import "https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyDYF_tiHJwmBzHKnrx6v2fH0vvaHVbC_lI",
+    apiKey: "API_KEY",
     authDomain: "diplomv1-76630.firebaseapp.com",
     databaseURL: "https://diplomv1-76630-default-rtdb.firebaseio.com",
     projectId: "diplomv1-76630",
     storageBucket: "diplomv1-76630.firebasestorage.app",
     messagingSenderId: "366758054319",
-    appId: "1:366758054319:web:62a9011da0c2462326c75a",
+    appId: "APP_ID",
     measurementId: "G-LHB4C8MTRC"
   };
 
@@ -91,14 +84,12 @@
     maxZoom: 19, attribution: '© OpenStreetMap'
   }).addTo(map);
 
-  // 🔹 Кастомная иконка для трекера (автомобиль)
   const trackerIcon = L.icon({
     iconUrl: 'https://img.icons8.com/?size=100&id=kfRfIRUL7jMk&format=png&color=000000',
     iconSize: [40, 40],
     iconAnchor: [20, 40],
   });
 
-  // 🔹 Кастомная иконка для пользователя (человек)
   const userIcon = L.icon({
     iconUrl: 'https://img.icons8.com/?size=100&id=x0qTmzjcFRhW&format=png&color=000000',
     iconSize: [30, 30],
@@ -108,6 +99,7 @@
   let marker = L.marker([52.183239, 28.964365], { icon: trackerIcon }).addTo(map);
   let userMarker = null;
   let routeControl = null;
+  let routeVisible = false;
 
   function haversine(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -131,46 +123,41 @@
 
       const distance = haversine(userLat, userLon, marker.getLatLng().lat, marker.getLatLng().lng).toFixed(2);
       document.getElementById('infoPanel').innerHTML = `📍 Расстояние до цели: ${distance} км`;
+
+      if (routeVisible) {
+        if (routeControl) {
+          map.removeControl(routeControl);
+        }
+
+        routeControl = L.Routing.control({
+          waypoints: [userMarker.getLatLng(), marker.getLatLng()],
+          routeWhileDragging: true,
+          lineOptions: { styles: [{ color: 'blue', weight: 5 }] },
+          createMarker: () => null,
+        }).addTo(map);
+      }
     });
   }
 
-  let routeVisible = false;
   document.getElementById('toggleRoute').addEventListener('click', () => {
-  if (routeVisible) {
-    map.removeControl(routeControl);
-    routeVisible = false;
-    document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-route"></i> Маршрут';
-  } else {
-    if (userMarker) {
-      routeControl = L.Routing.control({
-        waypoints: [userMarker.getLatLng(), marker.getLatLng()],
-        routeWhileDragging: true,
-        lineOptions: { styles: [{ color: 'red', weight: 5 }] },
-        createMarker: () => null,
-      }).addTo(map);
+    if (routeVisible) {
+      map.removeControl(routeControl);
+      routeVisible = false;
+      document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-route"></i> Маршрут';
+    } else {
+      if (userMarker) {
+        routeControl = L.Routing.control({
+          waypoints: [userMarker.getLatLng(), marker.getLatLng()],
+          routeWhileDragging: true,
+          lineOptions: { styles: [{ color: 'red', weight: 5 }] },
+          createMarker: () => null,
+        }).addTo(map);
 
-      routeVisible = true;
-      document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-times"></i> Закрыть';
-
-      // 🔹 Корректный расчёт расстояния маршрута
-      routeControl.on('routesfound', function (e) {
-        let route = e.routes[0];
-        let totalDistance = (route.summary.totalDistance / 1000).toFixed(2);
-        document.getElementById('infoPanel').innerHTML = `📍 Расстояние до цели: ${totalDistance} км`;
-
-        // 🔹 Стилизация инструкций маршрута
-        // route.instructions.forEach((step) => {
-        //   step.text = step.text.replace('Turn right', '🔄 Поверни направо');
-        //   step.text = step.text.replace('Turn left', '🔄 Поверни налево');
-        //   step.text = step.text.replace('Go straight', '➡️ Двигайся прямо');
-        //   step.text = step.text.replace('Head northeast', 'Направляйтесь на северо-восток');
-        //   step.text = step.text.replace('Stop', '🛑 Остановка');
-        // });
-      });
+        routeVisible = true;
+        document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-times"></i> Закрыть';
+      }
     }
-  }
-});
-
+  });
 
 </script>
 

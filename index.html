@@ -1,165 +1,202 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GPS-трекер by NemtsevV Org's</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.css">
-<style>
-  body {
-    font-family: 'Inter', sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f8f9fa;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GPS-трекер by NemtsevV Org's</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.css" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+    }
 
-  #map {
-    height: 100vh;
-    width: 100%;
-    border-radius: 15px;
-    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2);
-  }
+    #map {
+      height: 100vh;
+      width: 100%;
+      border-radius: 15px;
+      box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2);
+    }
 
-  .button {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    z-index: 1000;
-    padding: 12px 20px;
-    background: linear-gradient(45deg, #007BFF, #0056b3);
-    color: white;
-    font-size: 18px;
-    font-weight: bold;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-  }
+    .button {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      padding: 12px 20px;
+      background: linear-gradient(45deg, #007BFF, #0056b3);
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+    }
 
-  .button:hover { transform: scale(1.05); }
-  .button:active { transform: scale(0.95); }
+    .button:hover { transform: scale(1.05); }
+    .button:active { transform: scale(0.95); }
 
-  #infoPanel {
-    position: absolute;
-    bottom: 80px;
-    right: 20px;
-    z-index: 1000;
-    padding: 12px;
-    background-color: rgba(255, 255, 255, 0.85);
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: bold;
-  }
-</style>
+    #infoPanel {
+      position: absolute;
+      bottom: 80px;
+      right: 20px;
+      z-index: 1000;
+      padding: 12px;
+      background-color: rgba(255, 255, 255, 0.85);
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
 
-<button id="toggleRoute" class="button"><i class="fas fa-route"></i> Маршрут</button>
-<div id="infoPanel">📍 Расстояние до цели: -- км</div>
-<div id="map"></div>
+  <button id="toggleRoute" class="button"><i class="fas fa-route"></i> Маршрут</button>
+  <div id="infoPanel">📍 Расстояние до цели: -- км</div>
+  <div id="map"></div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
-  import L from "https://cdn.skypack.dev/leaflet";
-  import "https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      query,
+      orderByKey,
+      limitToLast,
+      onValue
+    } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+    import L from "https://cdn.skypack.dev/leaflet";
+    import "https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js";
 
-  const firebaseConfig = {
-    apiKey: "API_KEY",
-    authDomain: "diplomv1-76630.firebaseapp.com",
-    databaseURL: "https://diplomv1-76630-default-rtdb.firebaseio.com",
-    projectId: "diplomv1-76630",
-    storageBucket: "diplomv1-76630.firebasestorage.app",
-    messagingSenderId: "366758054319",
-    appId: "APP_ID",
-    measurementId: "G-LHB4C8MTRC"
-  };
+    const firebaseConfig = {
+      apiKey: "API_KEY",
+      authDomain: "diplomv1-76630.firebaseapp.com",
+      databaseURL: "https://diplomv1-76630-default-rtdb.firebaseio.com",
+      projectId: "diplomv1-76630",
+      storageBucket: "diplomv1-76630.firebasestorage.app",
+      messagingSenderId: "366758054319",
+      appId: "APP_ID",
+      measurementId: "G-LHB4C8MTRC"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-  const map = L.map('map').setView([52.183239, 28.964365], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '© OpenStreetMap'
-  }).addTo(map);
+    const map = L.map('map').setView([52.183239, 28.964365], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap'
+    }).addTo(map);
 
-  const trackerIcon = L.icon({
-    iconUrl: 'https://img.icons8.com/?size=100&id=kfRfIRUL7jMk&format=png&color=000000',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-  });
+    const trackerIcon = L.icon({
+      iconUrl: 'https://img.icons8.com/?size=100&id=kfRfIRUL7jMk&format=png&color=000000',
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+    });
 
-  const userIcon = L.icon({
-    iconUrl: 'https://img.icons8.com/?size=100&id=x0qTmzjcFRhW&format=png&color=000000',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-  });
+    const userIcon = L.icon({
+      iconUrl: 'https://img.icons8.com/?size=100&id=x0qTmzjcFRhW&format=png&color=000000',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+    });
 
-  let marker = L.marker([52.183239, 28.964365], { icon: trackerIcon }).addTo(map);
-  let userMarker = null;
-  let routeControl = null;
-  let routeVisible = false;
+    let marker = null;
+    let userMarker = null;
+    let routeControl = null;
+    let routeVisible = false;
 
-  function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) *
+                Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
 
-  if (navigator.geolocation) {
-    navigator.geolocation.watchPosition((position) => {
-      const userLat = position.coords.latitude;
-      const userLon = position.coords.longitude;
+    // Получение последней координаты из /location
+    const locationRef = query(ref(db, "location"), orderByKey(), limitToLast(1));
 
-      if (!userMarker) {
-        userMarker = L.marker([userLat, userLon], { icon: userIcon }).addTo(map);
-      } else {
-        userMarker.setLatLng([userLat, userLon]);
-      }
+    onValue(locationRef, (snapshot) => {
+      snapshot.forEach((child) => {
+        const data = child.val();
+        const lat = parseFloat(data.lat);
+        const lon = parseFloat(data.lon);
+        if (!isNaN(lat) && !isNaN(lon)) {
+          if (!marker) {
+            marker = L.marker([lat, lon], { icon: trackerIcon }).addTo(map);
+          } else {
+            marker.setLatLng([lat, lon]);
+          }
+        } else if (marker) {
+          map.removeLayer(marker);
+          marker = null;
+        }
+      });
+    });
 
-      const distance = haversine(userLat, userLon, marker.getLatLng().lat, marker.getLatLng().lng).toFixed(2);
-      document.getElementById('infoPanel').innerHTML = `📍 Расстояние до цели: ${distance} км`;
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition((position) => {
+        const userLat = position.coords.latitude;
+        const userLon = position.coords.longitude;
 
+        if (!userMarker) {
+          userMarker = L.marker([userLat, userLon], { icon: userIcon }).addTo(map);
+        } else {
+          userMarker.setLatLng([userLat, userLon]);
+        }
+
+        if (marker) {
+          const distance = haversine(userLat, userLon, marker.getLatLng().lat, marker.getLatLng().lng).toFixed(2);
+          document.getElementById('infoPanel').innerHTML = `📍 Расстояние до цели: ${distance} км`;
+
+          if (routeVisible) {
+            if (routeControl) {
+              map.removeControl(routeControl);
+            }
+
+            routeControl = L.Routing.control({
+              waypoints: [userMarker.getLatLng(), marker.getLatLng()],
+              routeWhileDragging: true,
+              lineOptions: { styles: [{ color: 'blue', weight: 5 }] },
+              createMarker: () => null,
+            }).addTo(map);
+          }
+        } else {
+          document.getElementById('infoPanel').innerHTML = `📍 Местоположение трекера недоступно`;
+        }
+      });
+    }
+
+    document.getElementById('toggleRoute').addEventListener('click', () => {
       if (routeVisible) {
         if (routeControl) {
           map.removeControl(routeControl);
+          routeControl = null;
         }
+        routeVisible = false;
+        document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-route"></i> Маршрут';
+      } else {
+        if (userMarker && marker) {
+          routeControl = L.Routing.control({
+            waypoints: [userMarker.getLatLng(), marker.getLatLng()],
+            routeWhileDragging: true,
+            lineOptions: { styles: [{ color: 'red', weight: 5 }] },
+            createMarker: () => null,
+          }).addTo(map);
 
-        routeControl = L.Routing.control({
-          waypoints: [userMarker.getLatLng(), marker.getLatLng()],
-          routeWhileDragging: true,
-          lineOptions: { styles: [{ color: 'blue', weight: 5 }] },
-          createMarker: () => null,
-        }).addTo(map);
+          routeVisible = true;
+          document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-times"></i> Закрыть';
+        }
       }
     });
-  }
-
-  document.getElementById('toggleRoute').addEventListener('click', () => {
-    if (routeVisible) {
-      map.removeControl(routeControl);
-      routeVisible = false;
-      document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-route"></i> Маршрут';
-    } else {
-      if (userMarker) {
-        routeControl = L.Routing.control({
-          waypoints: [userMarker.getLatLng(), marker.getLatLng()],
-          routeWhileDragging: true,
-          lineOptions: { styles: [{ color: 'red', weight: 5 }] },
-          createMarker: () => null,
-        }).addTo(map);
-
-        routeVisible = true;
-        document.getElementById('toggleRoute').innerHTML = '<i class="fas fa-times"></i> Закрыть';
-      }
-    }
-  });
-
-</script>
+  </script>
 
 </body>
 </html>
